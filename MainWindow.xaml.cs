@@ -231,28 +231,20 @@ namespace WorkPlace
                 if (!File.Exists(configPath))
                 {
                     var defaultConfig = @"{
+  ""testing"": false,
+  ""password"": ""changeme"",
   ""apps"": [
-    { ""name"": ""VS Code"", ""id"": ""vscode"", ""executable"": ""C:\\Users\\soham\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"" },
-    { ""name"": ""WSL"", ""id"": ""wsl"", ""executable"": ""C:\\Windows\\System32\\wsl.exe"" },
-    { ""name"": ""Antigravity IDE"", ""id"": ""antigravity"", ""executable"": ""C:\\Users\\soham\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe"" },
-    { ""name"": ""Slack"", ""id"": ""slack"", ""executable"": ""slack:"" },
-    { ""name"": ""WhatsApp"", ""id"": ""whatsapp"", ""executable"": ""whatsapp:"" },
-    { ""name"": ""Whiteboard"", ""id"": ""whiteboard"", ""executable"": ""ms-whiteboard-cmd:"" }
+    { ""name"": ""Calculator"", ""id"": ""calc"", ""executable"": ""calc.exe"" },
+    { ""name"": ""Notepad"", ""id"": ""notepad"", ""executable"": ""notepad.exe"" }
   ],
   ""websites"": [
-    { ""name"": ""DLP"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_da5013"" },
-    { ""name"": ""MR"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_ms3002"" },
-    { ""name"": ""LLM"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_da5004"" },
-    { ""name"": ""GDVL"", ""url"": ""https://shrigondavalekarmaharaj.org/darshan/"" },
-    { ""name"": ""Bitbucket"", ""url"": ""https://bitbucket.org/helloar/workspace/overview/"" },
-    { ""name"": ""Vercel"", ""url"": ""https://vercel.com/helloar"" },
-    { ""name"": ""Supabase"", ""url"": ""https://supabase.com/dashboard/org/nasiidbefyebrhavqkrx"" }
+    { ""name"": ""Example"", ""url"": ""https://example.com"" }
   ],
   ""allowedDomains"": [
-    ""study.iitm.ac.in"", ""bitbucket.org"", ""drive.google.com"", ""github.com"",
-    ""vercel.com"", ""vercel.app"", ""helloramp.ai"", ""blocksite.co"",
-    ""web.whatsapp.com"", ""app.slack.com"", ""meet.google.com"", ""zoom.us"",
-    ""localhost"", ""127.0.0.1"", ""0.0.0.0""
+    ""example.com"",
+    ""localhost"",
+    ""127.0.0.1"",
+    ""0.0.0.0""
   ]
 }";
                     File.WriteAllText(configPath, defaultConfig);
