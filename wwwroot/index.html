@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nitya</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT PANEL -->
+        <aside class="sidebar panel glass">
+            <div class="sidebar-logo">नित्य</div>
+            <button id="trackerToggleBtn" class="icon-btn" title="Open Tracker">
+                <i data-lucide="layout-dashboard"></i>
+            </button>
+            
+            <div class="sidebar-section">
+                <ul class="app-list" id="appList">
+                    <!-- Apps injected by JS -->
+                </ul>
+            </div>
+            
+            <div class="sidebar-divider"></div>
+            
+            <div class="sidebar-section">
+                <ul class="website-list" id="websiteList">
+                    <!-- Websites injected by JS -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL -->
+        <main class="workspace panel">
+            <!-- Normal Workspace View -->
+            <div id="mainWorkspaceView" class="workspace-view">
+                <div class="top-bar glass">
+                    <select id="modeSelector" class="mode-select" style="margin-right: 10px;">
+                        <option value="none">Normal Mode</option>
+                        <option value="namjap">Namjap</option>
+                        <option value="book_offline">Book reading</option>
+                        <option value="exercise">Exercise</option>
+                    </select>
+                    <button id="splitBtn" class="icon-btn" title="Toggle Split Screen">Split</button>
+                    <input type="text" id="urlInput" placeholder="Enter URL or search..." />
+                    <button id="goBtn">Go</button>
+                </div>
+                <div id="workspaceArea" class="workspace-area">
+                    <div id="pane1" class="workspace-pane active">
+                        <div class="placeholder-text">Pane 1 (Active)</div>
+                    </div>
+                    <div id="resizer" class="resizer hidden"></div>
+                    <div id="pane2" class="workspace-pane hidden">
+                        <div class="placeholder-text">Pane 2</div>
+                    </div>
+                </div>
+                
+                <div id="taskbar" class="taskbar">
+                    <!-- Minimized apps injected by JS -->
+                </div>
+            </div>
+
+            <!-- Tracker Workspace View -->
+            <div id="trackerWorkspaceView" class="workspace-view hidden" style="flex-direction: column;">
+                <div class="tracker-topbar">
+                    <button id="prevDateBtn" class="nav-btn"><i data-lucide="chevron-left"></i></button>
+                    <div id="dateCarousel" class="date-carousel">
+                        <!-- Dates will be injected here via JS -->
+                    </div>
+                    <button id="nextDateBtn" class="nav-btn"><i data-lucide="chevron-right"></i></button>
+                </div>
+                <div id="carouselDateRange" class="carousel-date-range"></div>
+                
+                <div class="tracker-content">
+                    <!-- Reports Card -->
+                    <div class="tracker-card" id="reportsCard">
+                        <div class="card-header">
+                            <h2><i data-lucide="file-text"></i> Reports</h2>
+                            <div class="card-subtitle" id="reportsDateSubtitle"></div>
+                        </div>
+                        <div class="card-body">
+                            <div id="reportEmptyState" class="empty-state">
+                                <i data-lucide="file-text" class="empty-icon"></i>
+                                <p>No reports for this day</p>
+                            </div>
+                            <div id="reportContent" class="report-content hidden"></div>
+                            <div id="reportsList" class="reports-list hidden"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Goals Card -->
+                    <div class="tracker-card" id="goalsCard">
+                        <div class="card-header">
+                            <h2><i data-lucide="target"></i> Goals</h2>
+                            <div class="card-subtitle" id="goalsDateSubtitle"></div>
+                        </div>
+                        <div class="card-body">
+                            <div id="goalsEmptyState" class="empty-state hidden">
+                                <i data-lucide="target" class="empty-icon"></i>
+                                <p>Navigate to a past or current date to set goals</p>
+                            </div>
+                            <div id="goalsContent" class="goals-content">
+                                <div class="goals-controls">
+                                    <input type="text" id="newGoalInput" placeholder="Add a new goal..." />
+                                    <button id="addGoalBtn"><i data-lucide="plus"></i></button>
+                                </div>
+                                <ul id="goalsList" class="goals-list"></ul>
+                                
+                                <div class="scores-container">
+                                    <div class="score-field">
+                                        <label>Start</label>
+                                        <input type="number" id="startScoreInput" />
+                                    </div>
+                                    <div class="score-field">
+                                        <label>Today</label>
+                                        <span id="todayScoreDisplay" class="score-highlight">0</span>
+                                    </div>
+                                    <div class="score-field total-score">
+                                        <label>Total</label>
+                                        <span id="totalScoreDisplay" class="score-highlight">0</span>
+                                    </div>
+                                    <button id="saveTrackerBtn" class="save-tracker-btn"><i data-lucide="save"></i> Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Books Card -->
+                    <div class="tracker-card" id="booksCard">
+                        <div class="card-header">
+                            <h2><i data-lucide="book"></i> Books</h2>
+                            <div class="card-subtitle" id="booksDateSubtitle"></div>
+                        </div>
+                        <div class="card-body">
+                            <div id="booksEmptyState" class="empty-state hidden">
+                                <i data-lucide="book-open" class="empty-icon"></i>
+                                <p>No books tracked for this day</p>
+                            </div>
+                            <div id="booksContent" class="goals-content">
+                                <div class="goals-controls" style="display: flex; gap: 10px;">
+                                    <input type="text" id="newBookInput" placeholder="Add a new book..." style="flex:1" />
+                                    <button id="addBookBtn"><i data-lucide="plus"></i></button>
+                                </div>
+                                <ul id="booksList" class="goals-list book-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="right-panel panel glass">
+            <div class="session-info">
+                <h2>Session</h2>
+                <div class="time-display" id="timeDisplay">00:00:00</div>
+                <div class="start-time">Started at: <span id="startTimeDisplay">--:--</span></div>
+                <div class="namjap-info" style="margin-top: 5px; font-weight: bold; color: var(--accent);"><span id="smallNamjapCount">0</span></div>
+            </div>
+            
+            <div class="notes-section" style="display:flex; flex-direction:column; flex: 1;">
+                <h2>Notes</h2>
+                <div id="renderedNotes" class="rendered-notes"></div>
+                <textarea id="noteInput" class="note-input" placeholder="Type markdown & press Enter... (Shift+Enter for new line)"></textarea>
+            </div>
+            
+            <button id="exitBtn" class="exit-btn">Exit Nitya</button>
+        </aside>
+    </div>
+
+    <!-- STARTUP SESSION MODAL -->
+    <div id="sessionSetupModal" class="modal-overlay">
+        <div class="modal glass" style="text-align: center;">
+            <h2>Select Session Duration</h2>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">You will be locked in until the time elapses.</p>
+            <select id="sessionDurationSelect" class="session-select">
+                <option value="30">30 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="90">1.5 Hours</option>
+                <option value="120">2 Hours</option>
+                <option value="150">2.5 Hours</option>
+                <option value="180">3 Hours</option>
+                <option value="210">3.5 Hours</option>
+                <option value="240">4 Hours</option>
+                <option value="270">4.5 Hours</option>
+                <option value="300">5 Hours</option>
+            </select>
+            <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+                <button id="startSessionBtn" class="danger">Start Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXIT MODAL -->
+    <div id="exitModal" class="modal-overlay hidden">
+        <div class="modal glass">
+            <h2>Enter Password to Exit</h2>
+            <input type="password" id="exitPassword" placeholder="Password" />
+            <div class="modal-actions">
+                <button id="cancelExitBtn">Cancel</button>
+                <button id="confirmExitBtn" class="danger">Exit</button>
+            </div>
+            <div id="passwordError" class="error hidden">Incorrect password!</div>
+            <div id="timeError" class="error hidden">Session time has not elapsed yet!</div>
+        </div>
+    </div>
+
+    <!-- FOCUS MODE OVERLAY -->
+    <div id="focusModeOverlay" class="focus-mode-overlay hidden">
+        <div id="namjapDisplay" class="namjap-display hidden">0</div>
+        <button id="exitFocusModeBtn" class="exit-focus-btn">Exit Mode</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

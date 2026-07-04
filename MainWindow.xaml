@@ -1,0 +1,16 @@
+<Window x:Class="WorkPlace.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Nitya" Height="450" Width="800"
+        WindowStyle="None" 
+        Icon="pack://application:,,,/assets/app.ico"
+        WindowState="Maximized" 
+        Topmost="True"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="Black">
+    <Grid>
+        <wv2:WebView2 Name="webView" />
+    </Grid>
+</Window>
