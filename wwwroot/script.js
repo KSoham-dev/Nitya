@@ -3,6 +3,7 @@ const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.
 
 let apps = [];
 let websites = [];
+let exitPasswordValue = "unlock123";
 
 // Request config from backend
 if (window.chrome && window.chrome.webview) {
@@ -158,7 +159,7 @@ function generateReport(durationStr) {
     }).join('; ');
     const notesStr = sessionNotes.join('\n');
     
-    return `${escapeCsv(sessionId)},${escapeCsv(startTimeStr)},${escapeCsv(durationStr)},${escapeCsv(activities)},${escapeCsv(notesStr)},${sessionNamjapCount}`;
+    return `${escapeCsv(sessionId)},${escapeCsv(startTimeStr)},${escapeCsv(durationStr)},${escapeCsv(activities)},${escapeCsv(notesStr)},${escapeCsv(sessionNamjapCount)}`;
 }
 
 // Notes Logic
@@ -624,7 +625,7 @@ confirmExitBtn.onclick = () => {
     }
 
     const pwd = exitPassword.value;
-    if (pwd === "unlock123") {
+    if (pwd === exitPasswordValue) {
         const elapsedMs = startTime ? (new Date() - startTime) : 0;
         const diff = Math.floor(elapsedMs / 1000);
         const h = String(Math.floor(diff / 3600)).padStart(2, '0');
@@ -1137,11 +1138,22 @@ if (window.chrome && window.chrome.webview) {
                 const configData = JSON.parse(msg.config);
                 if (configData.apps) apps = configData.apps;
                 if (configData.websites) websites = configData.websites;
+                if (configData.password) exitPasswordValue = configData.password;
+                if (configData.testing === true) {
+                    const sel = document.getElementById('sessionDurationSelect');
+                    const opt = document.createElement('option');
+                    opt.value = "1";
+                    opt.textContent = "1 Minute (Trial)";
+                    sel.insertBefore(opt, sel.firstChild);
+                }
             } catch (e) {
                 console.error("Failed to parse config.json", e);
             }
             initAppList();
             initWebsiteList();
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         }
     });
 }

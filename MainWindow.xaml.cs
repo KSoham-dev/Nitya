@@ -387,9 +387,13 @@ namespace WorkPlace
                             try {
                                 var lines = File.ReadAllLines(f);
                                 foreach(var line in lines.Skip(1)) {
-                                    var parts = line.Split(',');
-                                    if(parts.Length >= 6 && int.TryParse(parts[5], out int nj)) {
-                                        totalNamjap += nj;
+                                    if (string.IsNullOrWhiteSpace(line)) continue;
+                                    var parts = line.Split(new[] { "\",\"" }, StringSplitOptions.None);
+                                    if(parts.Length >= 6) {
+                                        var njStr = parts[5].Trim('"');
+                                        if (int.TryParse(njStr, out int nj)) {
+                                            totalNamjap += nj;
+                                        }
                                     }
                                 }
                             } catch { }
