@@ -691,7 +691,6 @@ function getDayName(date) {
 }
 
 // Mode Selector Logic
-const bookIframe = document.getElementById('bookIframe');
 
 modeSelector.addEventListener('change', (e) => {
     if (e.target.value !== 'none') {
@@ -699,7 +698,6 @@ modeSelector.addEventListener('change', (e) => {
         focusModeOverlay.classList.remove('hidden');
         
         namjapDisplay.classList.add('hidden');
-        bookIframe.classList.add('hidden');
         
         if (e.target.value === 'namjap') {
             namjapDisplay.classList.remove('hidden');

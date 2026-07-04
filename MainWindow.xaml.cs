@@ -197,11 +197,17 @@ namespace WorkPlace
                     return (IntPtr)1;
                 }
                 
+                bool win = (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 || (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+
                 if (alt && kbStruct.vkCode == VK_TAB) return (IntPtr)1;
                 if (alt && kbStruct.vkCode == VK_ESCAPE) return (IntPtr)1;
                 if (alt && kbStruct.vkCode == VK_F4) return (IntPtr)1;
                 if ((kbStruct.vkCode == VK_ESCAPE) && ctrl) return (IntPtr)1;
-                if (kbStruct.vkCode == VK_LWIN || kbStruct.vkCode == VK_RWIN) return (IntPtr)1;
+                
+                // Block harmful Win key combinations, but allow Win+Shift+S and Win+V
+                if (win && kbStruct.vkCode == VK_TAB) return (IntPtr)1; // Win+Tab
+                if (win && kbStruct.vkCode == 0x44) return (IntPtr)1; // Win+D
+                if (win && kbStruct.vkCode == 0x4D) return (IntPtr)1; // Win+M
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
