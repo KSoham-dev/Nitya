@@ -210,11 +210,58 @@ namespace WorkPlace
         {
             await webView.EnsureCoreWebView2Async(null);
             
+            EnsureConfigExists();
+
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
             string htmlPath = Path.Combine(appDir, "wwwroot", "index.html");
             webView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
             
             webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+        }
+
+        private void EnsureConfigExists()
+        {
+            try
+            {
+                var baseDir = Directory.GetCurrentDirectory();
+                var userDataDir = Path.Combine(baseDir, "user-data");
+                Directory.CreateDirectory(userDataDir);
+                
+                var configPath = Path.Combine(userDataDir, "config.json");
+                if (!File.Exists(configPath))
+                {
+                    var defaultConfig = @"{
+  ""apps"": [
+    { ""name"": ""VS Code"", ""id"": ""vscode"", ""executable"": ""C:\\Users\\soham\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"" },
+    { ""name"": ""WSL"", ""id"": ""wsl"", ""executable"": ""C:\\Windows\\System32\\wsl.exe"" },
+    { ""name"": ""Antigravity IDE"", ""id"": ""antigravity"", ""executable"": ""C:\\Users\\soham\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe"" },
+    { ""name"": ""Slack"", ""id"": ""slack"", ""executable"": ""slack:"" },
+    { ""name"": ""WhatsApp"", ""id"": ""whatsapp"", ""executable"": ""whatsapp:"" },
+    { ""name"": ""Whiteboard"", ""id"": ""whiteboard"", ""executable"": ""ms-whiteboard-cmd:"" }
+  ],
+  ""websites"": [
+    { ""name"": ""DLP"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_da5013"" },
+    { ""name"": ""MR"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_ms3002"" },
+    { ""name"": ""LLM"", ""url"": ""https://seek.study.iitm.ac.in/courses/ns_26t2_da5004"" },
+    { ""name"": ""GDVL"", ""url"": ""https://shrigondavalekarmaharaj.org/darshan/"" },
+    { ""name"": ""Bitbucket"", ""url"": ""https://bitbucket.org/helloar/workspace/overview/"" },
+    { ""name"": ""Vercel"", ""url"": ""https://vercel.com/helloar"" },
+    { ""name"": ""Supabase"", ""url"": ""https://supabase.com/dashboard/org/nasiidbefyebrhavqkrx"" }
+  ],
+  ""allowedDomains"": [
+    ""study.iitm.ac.in"", ""bitbucket.org"", ""drive.google.com"", ""github.com"",
+    ""vercel.com"", ""vercel.app"", ""helloramp.ai"", ""blocksite.co"",
+    ""web.whatsapp.com"", ""app.slack.com"", ""meet.google.com"", ""zoom.us"",
+    ""localhost"", ""127.0.0.1"", ""0.0.0.0""
+  ]
+}";
+                    File.WriteAllText(configPath, defaultConfig);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
         }
 
         private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -230,6 +277,14 @@ namespace WorkPlace
                     // Exit cleanly without killing launched apps
                     _forceClose = true;
                     Application.Current.Shutdown();
+                }
+                else if (type == "LoadConfig")
+                {
+                    var baseDir = Directory.GetCurrentDirectory();
+                    var configPath = Path.Combine(baseDir, "user-data", "config.json");
+                    var content = File.Exists(configPath) ? File.ReadAllText(configPath) : "{}";
+                    var response = new { type = "ConfigLoaded", config = content };
+                    webView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(response));
                 }
                 else if (type == "SetLock")
                 {
@@ -296,7 +351,7 @@ namespace WorkPlace
                     if (!string.IsNullOrEmpty(content))
                     {
                         var baseDir = Directory.GetCurrentDirectory();
-                        var dateDir = Path.Combine(baseDir, "reports", DateTime.Now.ToString("yyyy-MM-dd"));
+                        var dateDir = Path.Combine(baseDir, "user-data", "reports", DateTime.Now.ToString("yyyy-MM-dd"));
                         Directory.CreateDirectory(dateDir);
                         var path = Path.Combine(dateDir, "Report.csv");
                         if (!File.Exists(path))
@@ -309,7 +364,7 @@ namespace WorkPlace
                 else if (type == "GetTrackerDates")
                 {
                     var baseDir = Directory.GetCurrentDirectory();
-                    var reportsDir = Path.Combine(baseDir, "reports");
+                    var reportsDir = Path.Combine(baseDir, "user-data", "reports");
                     var dates = new List<string>();
                     if (Directory.Exists(reportsDir))
                     {
@@ -327,7 +382,7 @@ namespace WorkPlace
                 {
                     var date = data.GetProperty("date").GetString();
                     var baseDir = Directory.GetCurrentDirectory();
-                    var dateDir = Path.Combine(baseDir, "reports", date!);
+                    var dateDir = Path.Combine(baseDir, "user-data", "reports", date!);
                     var reports = new List<object>();
                     int totalNamjap = 0;
                     if (Directory.Exists(dateDir))
@@ -363,7 +418,7 @@ namespace WorkPlace
                 else if (type == "LoadTrackerData")
                 {
                     var baseDir = Directory.GetCurrentDirectory();
-                    var trackerFile = Path.Combine(baseDir, "reports", "tracker.json");
+                    var trackerFile = Path.Combine(baseDir, "user-data", "tracker.json");
                     var content = File.Exists(trackerFile) ? File.ReadAllText(trackerFile) : "{}";
                     var response = new { type = "TrackerDataLoaded", data = content };
                     var json = JsonSerializer.Serialize(response);
@@ -375,9 +430,9 @@ namespace WorkPlace
                     if (!string.IsNullOrEmpty(trackerData))
                     {
                         var baseDir = Directory.GetCurrentDirectory();
-                        var reportsDir = Path.Combine(baseDir, "reports");
-                        Directory.CreateDirectory(reportsDir);
-                        File.WriteAllText(Path.Combine(reportsDir, "tracker.json"), trackerData);
+                        var userDataDir = Path.Combine(baseDir, "user-data");
+                        Directory.CreateDirectory(userDataDir);
+                        File.WriteAllText(Path.Combine(userDataDir, "tracker.json"), trackerData);
                     }
                 }
             }

@@ -32,3 +32,6 @@ reports/
 *.exe
 *.dll
 *.pdb
+
+# User Data
+user-data/

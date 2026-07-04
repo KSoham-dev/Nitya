@@ -1,24 +1,13 @@
 // script.js
 const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 
-const apps = [
-    { name: "VS Code", id: "vscode", executable: "C:\\Users\\soham\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe" },
-    { name: "WSL", id: "wsl", executable: "C:\\Windows\\System32\\wsl.exe" },
-    { name: "Antigravity IDE", id: "antigravity", executable: "C:\\Users\\soham\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe" },
-    { name: "Slack", id: "slack", executable: "slack:" },
-    { name: "WhatsApp", id: "whatsapp", executable: "whatsapp:" },
-    { name: "Whiteboard", id: "whiteboard", executable: "ms-whiteboard-cmd:" }
-];
+let apps = [];
+let websites = [];
 
-const websites = [
-    { name: "DLP", url: "https://seek.study.iitm.ac.in/courses/ns_26t2_da5013" },
-    { name: "MR", url: "https://seek.study.iitm.ac.in/courses/ns_26t2_ms3002" },
-    { name: "LLM", url: "https://seek.study.iitm.ac.in/courses/ns_26t2_da5004" },
-    { name: "GDVL", url: "https://shrigondavalekarmaharaj.org/darshan/" },
-    { name: "Bitbucket", url: "https://bitbucket.org/helloar/workspace/overview/" },
-    { name: "Vercel", url: "https://vercel.com/helloar" },
-    { name: "Supabase", url: "https://supabase.com/dashboard/org/nasiidbefyebrhavqkrx" }
-];
+// Request config from backend
+if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage({ type: 'LoadConfig' });
+}
 
 // Session Tracking
 let runningApps = [];
@@ -330,8 +319,11 @@ const appIcons = {
 };
 
 const appList = document.getElementById("appList");
-apps.forEach(app => {
-    const li = document.createElement("li");
+
+function initAppList() {
+    appList.innerHTML = "";
+    apps.forEach(app => {
+        const li = document.createElement("li");
     li.className = "icon-btn";
     li.title = app.name;
     
@@ -385,11 +377,14 @@ apps.forEach(app => {
     };
     appList.appendChild(li);
 });
+}
 
 const websiteList = document.getElementById("websiteList");
 
-websites.forEach(site => {
-    const li = document.createElement("li");
+function initWebsiteList() {
+    websiteList.innerHTML = "";
+    websites.forEach(site => {
+        const li = document.createElement("li");
     li.className = "icon-btn";
     li.title = site.name;
     
@@ -443,6 +438,7 @@ websites.forEach(site => {
     };
     websiteList.appendChild(li);
 });
+}
 
 const allowedDomains = [
     "study.iitm.ac.in",
@@ -1136,6 +1132,16 @@ if (window.chrome && window.chrome.webview) {
                 updateTaskbar();
                 resetPanePlaceholders();
             }
+        } else if (msg.type === 'ConfigLoaded') {
+            try {
+                const configData = JSON.parse(msg.config);
+                if (configData.apps) apps = configData.apps;
+                if (configData.websites) websites = configData.websites;
+            } catch (e) {
+                console.error("Failed to parse config.json", e);
+            }
+            initAppList();
+            initWebsiteList();
         }
     });
 }

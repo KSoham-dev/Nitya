@@ -9,27 +9,34 @@ namespace WorkPlace
     {
         private string _initialUrl;
 
-        private readonly string[] allowedDomains = {
-            "study.iitm.ac.in",
-            "bitbucket.org",
-            "drive.google.com",
-            "github.com",
-            "vercel.com",
-            "vercel.app",
-            "helloramp.ai",
-            "blocksite.co",
-            "web.whatsapp.com",
-            "app.slack.com",
-            "meet.google.com",
-            "zoom.us",
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0"
-        };
+        private string[] allowedDomains = Array.Empty<string>();
+
+        private void LoadAllowedDomains()
+        {
+            try
+            {
+                var baseDir = System.IO.Directory.GetCurrentDirectory();
+                var configPath = System.IO.Path.Combine(baseDir, "user-data", "config.json");
+                if (System.IO.File.Exists(configPath))
+                {
+                    var content = System.IO.File.ReadAllText(configPath);
+                    var data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                    if (data.TryGetProperty("allowedDomains", out var domainsProp))
+                    {
+                        allowedDomains = domainsProp.EnumerateArray().Select(x => x.GetString()!).ToArray();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to load allowed domains: " + ex.Message);
+            }
+        }
 
         public BrowserWindow(string initialUrl)
         {
             InitializeComponent();
+            LoadAllowedDomains();
             _initialUrl = initialUrl;
             InitializeAsync();
         }
