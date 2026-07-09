@@ -441,23 +441,23 @@ function initWebsiteList() {
 });
 }
 
-const allowedDomains = [
-    "study.iitm.ac.in",
-    "bitbucket.org",
-    "drive.google.com",
-    "github.com",
-    "vercel.com",
-    "vercel.app",
-    "helloramp.ai",
-    "blocksite.co",
-    "web.whatsapp.com",
-    "app.slack.com",
-    "meet.google.com",
-    "zoom.us",
-    "gmail.com",
-    "mail.google.com",
-    "shrigondavalekarmaharaj.org",
-    "supabase.com"
+let allowedDomains = [
+    // "study.iitm.ac.in",
+    // "bitbucket.org",
+    // "drive.google.com",
+    // "github.com",
+    // "vercel.com",
+    // "vercel.app",
+    // "helloramp.ai",
+    // "blocksite.co",
+    // "web.whatsapp.com",
+    // "app.slack.com",
+    // "meet.google.com",
+    // "zoom.us",
+    // "gmail.com",
+    // "mail.google.com",
+    // "shrigondavalekarmaharaj.org",
+    // "supabase.com"
 ];
 
 function isUrlAllowed(urlStr) {
@@ -1136,6 +1136,7 @@ if (window.chrome && window.chrome.webview) {
                 const configData = JSON.parse(msg.config);
                 if (configData.apps) apps = configData.apps;
                 if (configData.websites) websites = configData.websites;
+                if (Array.isArray(configData.allowedDomains)) allowedDomains = configData.allowedDomains;
                 if (configData.password) exitPasswordValue = configData.password;
                 if (configData.testing === true) {
                     const sel = document.getElementById('sessionDurationSelect');
