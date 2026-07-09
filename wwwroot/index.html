@@ -13,39 +13,43 @@
         <!-- LEFT PANEL -->
         <aside class="sidebar panel glass">
             <div class="sidebar-logo">नित्य</div>
-            <button id="trackerToggleBtn" class="icon-btn" title="Open Tracker">
+            <button id="trackerToggleBtn" class="icon-btn hidden" title="Open Tracker">
                 <i data-lucide="layout-dashboard"></i>
             </button>
             
-            <div class="sidebar-section">
-                <ul class="app-list" id="appList">
-                    <!-- Apps injected by JS -->
-                </ul>
+            <div class="sidebar-scrollable">
+                <div class="sidebar-section">
+                    <ul class="app-list" id="appList">
+                        <!-- Apps injected by JS -->
+                    </ul>
+                </div>
+                
+                <div class="sidebar-divider"></div>
+                
+                <div class="sidebar-section">
+                    <ul class="website-list" id="websiteList">
+                        <!-- Websites injected by JS -->
+                    </ul>
+                </div>
             </div>
-            
-            <div class="sidebar-divider"></div>
-            
-            <div class="sidebar-section">
-                <ul class="website-list" id="websiteList">
-                    <!-- Websites injected by JS -->
-                </ul>
-            </div>
+
+            <button id="exitBtn" class="icon-btn exit-app-btn" title="Exit Nitya">
+                <i data-lucide="log-out"></i>
+            </button>
         </aside>
 
         <!-- CENTER PANEL -->
         <main class="workspace panel">
-            <!-- Normal Workspace View -->
-            <div id="mainWorkspaceView" class="workspace-view">
+            <div id="mainWorkspaceView" class="workspace-view hidden" style="display: none !important;">
+                <div class="top-bar-hover-area"></div>
                 <div class="top-bar glass">
-                    <select id="modeSelector" class="mode-select" style="margin-right: 10px;">
-                        <option value="none">Normal Mode</option>
-                        <option value="namjap">Namjap</option>
-                        <option value="book_offline">Book reading</option>
-                        <option value="exercise">Exercise</option>
-                    </select>
-                    <button id="splitBtn" class="icon-btn" title="Toggle Split Screen">Split</button>
+                    <!-- URL Search Bar (to be decided later) -->
+                    <!--
                     <input type="text" id="urlInput" placeholder="Enter URL or search..." />
                     <button id="goBtn">Go</button>
+                    -->
+                    <input type="text" id="urlInput" placeholder="Enter URL or search..." style="display: none;" />
+                    <button id="goBtn" style="display: none;">Go</button>
                 </div>
                 <div id="workspaceArea" class="workspace-area">
                     <div id="pane1" class="workspace-pane active">
@@ -56,20 +60,34 @@
                         <div class="placeholder-text">Pane 2</div>
                     </div>
                 </div>
-                
-                <div id="taskbar" class="taskbar">
-                    <!-- Minimized apps injected by JS -->
-                </div>
             </div>
 
-            <!-- Tracker Workspace View -->
-            <div id="trackerWorkspaceView" class="workspace-view hidden" style="flex-direction: column;">
-                <div class="tracker-topbar">
-                    <button id="prevDateBtn" class="nav-btn"><i data-lucide="chevron-left"></i></button>
-                    <div id="dateCarousel" class="date-carousel">
-                        <!-- Dates will be injected here via JS -->
+            <!-- Tracker Workspace View (Now the default screen) -->
+            <div id="trackerWorkspaceView" class="workspace-view" style="flex-direction: column;">
+                <div class="tracker-topbar" style="display: flex; justify-content: space-between; align-items: center;">
+                    <!-- Left side: Mode Selector -->
+                    <select id="modeSelector" class="mode-select" style="margin-right: auto;">
+                        <option value="none">Normal Mode</option>
+                        <option value="namjap">Namjap</option>
+                        <option value="book_offline">Book reading</option>
+                        <option value="exercise">Exercise</option>
+                    </select>
+                    
+                    <!-- Center: Date Navigator -->
+                    <div style="display: flex; align-items: center; justify-content: center; flex: 1;">
+                        <button id="prevDateBtn" class="nav-btn"><i data-lucide="chevron-left"></i></button>
+                        <div id="dateCarousel" class="date-carousel">
+                            <!-- Dates will be injected here via JS -->
+                        </div>
+                        <button id="nextDateBtn" class="nav-btn"><i data-lucide="chevron-right"></i></button>
                     </div>
-                    <button id="nextDateBtn" class="nav-btn"><i data-lucide="chevron-right"></i></button>
+
+                    <!-- Right side: Timer & Namjap count -->
+                    <div class="session-info-minimal" style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
+                        <span id="startTimeDisplay" style="display:none;"></span>
+                        <div class="time-display" id="timeDisplay" style="font-size: 1.2rem; margin: 0; padding: 0; background: transparent; -webkit-text-fill-color: white;">00:00:00</div>
+                        <div class="namjap-info" style="font-weight: bold; color: var(--accent);"><span id="smallNamjapCount">0</span></div>
+                    </div>
                 </div>
                 <div id="carouselDateRange" class="carousel-date-range"></div>
                 
@@ -111,7 +129,8 @@
                                 <div class="scores-container">
                                     <div class="score-field">
                                         <label>Start</label>
-                                        <input type="number" id="startScoreInput" />
+                                        <span id="startScoreDisplay" class="score-highlight" style="cursor: pointer; min-width: 40px; text-align: center;">0</span>
+                                        <input type="number" id="startScoreInput" style="display: none; width: 70px; text-align: center;" />
                                     </div>
                                     <div class="score-field">
                                         <label>Today</label>
@@ -121,7 +140,7 @@
                                         <label>Total</label>
                                         <span id="totalScoreDisplay" class="score-highlight">0</span>
                                     </div>
-                                    <button id="saveTrackerBtn" class="save-tracker-btn"><i data-lucide="save"></i> Save</button>
+                                    <button id="saveTrackerBtn" class="save-tracker-btn check-icon-btn"><i data-lucide="check"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -149,25 +168,13 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Global Taskbar (Overlay across all views) -->
+            <div class="taskbar-hover-area is-empty"></div>
+            <div id="taskbar" class="taskbar is-empty">
+                <!-- Minimized apps injected by JS -->
+            </div>
         </main>
-
-        <!-- RIGHT PANEL -->
-        <aside class="right-panel panel glass">
-            <div class="session-info">
-                <h2>Session</h2>
-                <div class="time-display" id="timeDisplay">00:00:00</div>
-                <div class="start-time">Started at: <span id="startTimeDisplay">--:--</span></div>
-                <div class="namjap-info" style="margin-top: 5px; font-weight: bold; color: var(--accent);"><span id="smallNamjapCount">0</span></div>
-            </div>
-            
-            <div class="notes-section" style="display:flex; flex-direction:column; flex: 1;">
-                <h2>Notes</h2>
-                <div id="renderedNotes" class="rendered-notes"></div>
-                <textarea id="noteInput" class="note-input" placeholder="Type markdown & press Enter... (Shift+Enter for new line)"></textarea>
-            </div>
-            
-            <button id="exitBtn" class="exit-btn">Exit Nitya</button>
-        </aside>
     </div>
 
     <!-- STARTUP SESSION MODAL -->

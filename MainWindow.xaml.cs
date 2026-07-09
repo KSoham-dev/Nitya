@@ -73,8 +73,24 @@ namespace WorkPlace
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+
+        private const int HWND_BROADCAST = 0xffff;
+        private const int WM_SETTINGCHANGE = 0x001A;
+        private const int SMTO_ABORTIFHUNG = 0x0002;
         
         private const uint WM_CLOSE = 0x0010;
+
+        private const int GWL_STYLE = -16;
+        private const int WS_MAXIMIZEBOX = 0x00010000;
+        
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         private class AppWindow
         {
@@ -97,22 +113,72 @@ namespace WorkPlace
         private DispatcherTimer _trackerTimer;
         private bool _isLocked = false;
         private bool _forceClose = false;
+        private bool _isTesting = false;
 
         public MainWindow()
         {
             InitializeComponent();
             _proc = HookCallback;
             _hookID = SetHook(_proc);
-            this.Closed += (s, e) => UnhookWindowsHookEx(_hookID);
+            this.Closed += (s, e) => {
+                UnhookWindowsHookEx(_hookID);
+                RestoreTouchpadGestures();
+            };
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => RestoreTouchpadGestures();
             this.Closing += MainWindow_Closing;
             this.Activated += MainWindow_Activated;
+            this.Loaded += (s, e) => {
+                this.WindowState = WindowState.Normal;
+                this.WindowStyle = WindowStyle.None;
+                this.WindowState = WindowState.Maximized;
+                this.Activate();
+                this.Focus();
+                webView.Focus();
+            };
             
             _trackerTimer = new DispatcherTimer();
             _trackerTimer.Interval = TimeSpan.FromMilliseconds(500);
             _trackerTimer.Tick += TrackerTimer_Tick;
             _trackerTimer.Start();
 
+            DisableTouchpadGestures();
             InitializeAsync();
+        }
+
+        private void DisableTouchpadGestures()
+        {
+            try
+            {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad"))
+                {
+                    key.SetValue("ThreeFingerSlideEnabled", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                    key.SetValue("FourFingerSlideEnabled", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                }
+                using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Policies\Microsoft\Windows\EdgeUI"))
+                {
+                    key.SetValue("AllowEdgeSwipe", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                }
+                SendMessageTimeout((IntPtr)HWND_BROADCAST, WM_SETTINGCHANGE, UIntPtr.Zero, "Environment", SMTO_ABORTIFHUNG, 100, out _);
+            }
+            catch { }
+        }
+
+        private void RestoreTouchpadGestures()
+        {
+            try
+            {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad"))
+                {
+                    key.SetValue("ThreeFingerSlideEnabled", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    key.SetValue("FourFingerSlideEnabled", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                }
+                using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Policies\Microsoft\Windows\EdgeUI"))
+                {
+                    key.DeleteValue("AllowEdgeSwipe", false);
+                }
+                SendMessageTimeout((IntPtr)HWND_BROADCAST, WM_SETTINGCHANGE, UIntPtr.Zero, "Environment", SMTO_ABORTIFHUNG, 100, out _);
+            }
+            catch { }
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -177,12 +243,49 @@ namespace WorkPlace
             }
         }
 
+        private static bool _winKeyHandled = false;
+        
+        [DllImport("user32.dll")]
+        static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        private const int WM_KEYUP = 0x0101;
+        private const int WM_SYSKEYUP = 0x0105;
+
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            if (nCode >= 0)
             {
-                KBDLLHOOKSTRUCT kbStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-                bool alt = (kbStruct.flags & LLKHF_ALTDOWN) != 0;
+                bool isKeyDown = (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN);
+                bool isKeyUp = (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP);
+
+                if (isKeyDown || isKeyUp)
+                {
+                    KBDLLHOOKSTRUCT kbStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+
+                    if (kbStruct.vkCode == VK_LWIN || kbStruct.vkCode == VK_RWIN)
+                    {
+                        if (isKeyDown)
+                        {
+                            _winKeyHandled = false;
+                        }
+                        else if (isKeyUp)
+                        {
+                            if (!_winKeyHandled)
+                            {
+                                // Prevent Start Menu from opening by injecting a dummy keystroke
+                                keybd_event(0xFF, 0, 0, UIntPtr.Zero);
+                                keybd_event(0xFF, 0, 2, UIntPtr.Zero);
+                            }
+                        }
+                    }
+                    else if (isKeyDown)
+                    {
+                        _winKeyHandled = true;
+                    }
+
+                    if (isKeyDown)
+                    {
+                        bool alt = (kbStruct.flags & LLKHF_ALTDOWN) != 0;
                 bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
                 bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
 
@@ -193,6 +296,16 @@ namespace WorkPlace
                         this.Topmost = true;
                         this.Activate();
                         webView.CoreWebView2.ExecuteScriptAsync("document.getElementById('exitBtn').click();");
+                    });
+                    return (IntPtr)1;
+                }
+                
+                // Ctrl + Shift + K to forcefully kill app when testing
+                if (_isTesting && ctrl && shift && kbStruct.vkCode == 0x4B)
+                {
+                    Application.Current.Dispatcher.InvokeAsync(() => {
+                        _forceClose = true;
+                        Application.Current.Shutdown();
                     });
                     return (IntPtr)1;
                 }
@@ -208,6 +321,13 @@ namespace WorkPlace
                 if (win && kbStruct.vkCode == VK_TAB) return (IntPtr)1; // Win+Tab
                 if (win && kbStruct.vkCode == 0x44) return (IntPtr)1; // Win+D
                 if (win && kbStruct.vkCode == 0x4D) return (IntPtr)1; // Win+M
+                
+                        // Block desktop switching (Ctrl+Win+Left/Right) which is triggered by 4-finger gestures
+                        if (win && ctrl && kbStruct.vkCode == 0x25) return (IntPtr)1; // Ctrl+Win+Left
+                        if (win && ctrl && kbStruct.vkCode == 0x27) return (IntPtr)1; // Ctrl+Win+Right
+                        if (win && ctrl && kbStruct.vkCode == 0x73) return (IntPtr)1; // Ctrl+Win+F4 (Close Desktop)
+                    }
+                }
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
@@ -218,11 +338,31 @@ namespace WorkPlace
             
             EnsureConfigExists();
 
+            try
+            {
+                var configPath = Path.Combine(Directory.GetCurrentDirectory(), "user-data", "config.json");
+                if (File.Exists(configPath))
+                {
+                    var doc = JsonDocument.Parse(File.ReadAllText(configPath));
+                    if (doc.RootElement.TryGetProperty("testing", out var testingProp))
+                    {
+                        _isTesting = testingProp.GetBoolean();
+                    }
+                }
+            }
+            catch { }
+
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
             string htmlPath = Path.Combine(appDir, "wwwroot", "index.html");
             webView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
             
             webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            
+            webView.CoreWebView2.NavigationCompleted += (s, e) => {
+                this.Activate();
+                this.Focus();
+                webView.Focus();
+            };
         }
 
         private void EnsureConfigExists()
@@ -479,6 +619,9 @@ namespace WorkPlace
 
                 if (newHwnd != IntPtr.Zero)
                 {
+                    int style = GetWindowLong(newHwnd, GWL_STYLE);
+                    SetWindowLong(newHwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX);
+
                     _paneWindows[paneId] = newHwnd;
                     _trackedApps.Add(new AppWindow { Id = id, Hwnd = newHwnd, State = "open" });
                     PositionWindow(newHwnd, bounds, true);

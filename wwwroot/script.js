@@ -16,12 +16,15 @@ let appDurations = {}; // name -> total duration in ms
 
 function updateTaskbar() {
     const taskbar = document.getElementById('taskbar');
+    const hoverArea = document.querySelector('.taskbar-hover-area');
     const minimizedApps = runningApps.filter(a => a.status === 'minimized');
     
     if (minimizedApps.length > 0) {
-        taskbar.classList.remove('hidden');
+        taskbar.classList.remove('is-empty');
+        if (hoverArea) hoverArea.classList.remove('is-empty');
     } else {
-        taskbar.classList.add('hidden');
+        taskbar.classList.add('is-empty');
+        if (hoverArea) hoverArea.classList.add('is-empty');
     }
     
     taskbar.innerHTML = '';
@@ -44,7 +47,7 @@ function updateTaskbar() {
         
         const restoreBtn = document.createElement('button');
         restoreBtn.className = 'win-btn restore';
-        restoreBtn.innerHTML = '&#9723;'; // ◻
+        restoreBtn.innerHTML = '<i data-lucide="arrow-up-right" style="width: 14px; height: 14px;"></i>';
         restoreBtn.onclick = (e) => {
             e.stopPropagation();
             restoreApp(app);
@@ -71,6 +74,8 @@ function updateTaskbar() {
         item.appendChild(controls);
         taskbar.appendChild(item);
     });
+    
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function getOpenPanes() {
@@ -104,16 +109,22 @@ function restoreApp(app) {
     resetPanePlaceholders();
     
     const activePane = document.getElementById(targetPaneId);
-    const rect = activePane.getBoundingClientRect();
     
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage({
-            type: 'RestoreApp',
-            id: app.id,
-            paneId: targetPaneId,
-            bounds: { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
-        });
-    }
+    setTimeout(() => {
+        let rect = activePane.getBoundingClientRect();
+        if (!isSplit) {
+            rect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        }
+        
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage({
+                type: 'RestoreApp',
+                id: app.id,
+                paneId: targetPaneId,
+                bounds: { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+            });
+        }
+    }, 50);
 }
 
 function resetPanePlaceholders() {
@@ -132,6 +143,20 @@ function resetPanePlaceholders() {
         p2.querySelector('.placeholder-text').innerText = app2.name + ' (Running)';
     } else {
         p2.querySelector('.placeholder-text').innerText = 'Pane 2' + (activePaneId === 'pane2' ? ' (Active)' : '');
+    }
+    
+    updateSidebarMode();
+}
+
+function updateSidebarMode() {
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+        const hasOpenApps = runningApps.some(a => a.status === 'open');
+        if (hasOpenApps) {
+            appContainer.classList.add('apps-running');
+        } else {
+            appContainer.classList.remove('apps-running');
+        }
     }
 }
 
@@ -165,55 +190,7 @@ function generateReport(durationStr) {
 // Notes Logic
 let sessionNotes = [];
 
-function parseMarkdown(md) {
-    let html = md
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
-        .replace(/\*\*(.*)\*\*/gim, '<b>$1</b>')
-        .replace(/\*(.*)\*/gim, '<i>$1</i>')
-        .replace(/`([^`]+)`/gim, '<code>$1</code>')
-        .replace(/\n/gim, '<br>');
-    return html.trim();
-}
-
-const renderedNotes = document.getElementById('renderedNotes');
-const noteInput = document.getElementById('noteInput');
-
-// Focus input if user clicks empty area in rendered notes
-renderedNotes.addEventListener('click', (e) => {
-    if (e.target === renderedNotes) {
-        noteInput.focus();
-    }
-});
-
-noteInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        const text = noteInput.value.trim();
-        if (text) {
-            sessionNotes.push(text);
-            
-            const div = document.createElement('div');
-            div.className = 'rendered-note-block markdown-body';
-            div.innerHTML = parseMarkdown(text);
-            renderedNotes.appendChild(div);
-            
-            // Allow double click to edit
-            const noteIndex = sessionNotes.length - 1;
-            div.ondblclick = () => {
-                noteInput.value = sessionNotes[noteIndex];
-                sessionNotes.splice(noteIndex, 1);
-                div.remove();
-                noteInput.focus();
-            };
-            
-            noteInput.value = '';
-            renderedNotes.scrollTop = renderedNotes.scrollHeight;
-        }
-    }
-});
+// Removed notes logic as UI was removed
 
 // Split Screen State
 let isSplit = false;
@@ -222,7 +199,6 @@ let activePaneId = 'pane1';
 const pane1 = document.getElementById('pane1');
 const pane2 = document.getElementById('pane2');
 const resizer = document.getElementById('resizer');
-const splitBtn = document.getElementById('splitBtn');
 const workspaceArea = document.getElementById('workspaceArea');
 
 pane1.onclick = () => setActivePane('pane1');
@@ -239,22 +215,6 @@ function setActivePane(id) {
     }
     resetPanePlaceholders();
 }
-
-splitBtn.onclick = () => {
-    isSplit = !isSplit;
-    if (isSplit) {
-        pane2.classList.remove('hidden');
-        resizer.classList.remove('hidden');
-        pane1.style.flex = '1';
-        pane2.style.flex = '1';
-    } else {
-        pane2.classList.add('hidden');
-        resizer.classList.add('hidden');
-        pane1.style.flex = '1';
-        setActivePane('pane1');
-    }
-    setTimeout(sendUpdateBounds, 50);
-};
 
 // Resizer logic
 let isResizing = false;
@@ -290,7 +250,10 @@ function sendUpdateBounds() {
     if (!window.chrome || !window.chrome.webview) return;
     
     const panes = [];
-    const p1Rect = pane1.getBoundingClientRect();
+    let p1Rect = pane1.getBoundingClientRect();
+    if (!isSplit) {
+        p1Rect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    }
     panes.push({
         id: 'pane1',
         bounds: { x: p1Rect.left, y: p1Rect.top, width: p1Rect.width, height: p1Rect.height }
@@ -345,7 +308,6 @@ function initAppList() {
             return;
         }
 
-        const rect = document.getElementById(targetPane).getBoundingClientRect();
         const id = 'app_' + Math.random().toString(36).substring(2, 9);
         
         runningApps.push({
@@ -356,31 +318,52 @@ function initAppList() {
             status: 'open',
             paneId: targetPane
         });
-
-        const payload = {
-            type: 'LaunchApp',
-            id: id,
-            paneId: targetPane,
-            executable: app.executable,
-            arguments: app.arguments,
-            bounds: {
-                x: rect.left,
-                y: rect.top,
-                width: rect.width,
-                height: rect.height
-            }
-        };
-
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(payload);
-        }
         resetPanePlaceholders();
+
+        setTimeout(() => {
+            let rect = document.getElementById(targetPane).getBoundingClientRect();
+            if (!isSplit) {
+                rect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+            }
+            const payload = {
+                type: 'LaunchApp',
+                id: id,
+                paneId: targetPane,
+                executable: app.executable,
+                arguments: app.arguments,
+                bounds: {
+                    x: rect.left,
+                    y: rect.top,
+                    width: rect.width,
+                    height: rect.height
+                }
+            };
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(payload);
+            }
+        }, 50);
     };
     appList.appendChild(li);
 });
 }
 
 const websiteList = document.getElementById("websiteList");
+
+function getWebsiteIcon(site) {
+    const url = site.url.toLowerCase();
+    const name = site.name.toLowerCase();
+    
+    if (url.includes('github') || url.includes('bitbucket') || name.includes('git')) return 'code';
+    if (url.includes('meet.google') || url.includes('zoom') || name.includes('meet') || name.includes('standup')) return 'video';
+    if (url.includes('mail') || url.includes('gmail')) return 'mail';
+    if (url.includes('drive.google')) return 'hard-drive';
+    if (url.includes('slack') || url.includes('whatsapp') || name.includes('chat')) return 'message-square';
+    if (url.includes('vercel') || url.includes('supabase') || name.includes('db')) return 'database';
+    if (url.includes('study.iitm') || name.includes('dlp') || name.includes('mr') || name.includes('llm') || name.includes('course')) return 'book-open';
+    if (url.includes('youtube')) return 'youtube';
+    
+    return 'globe'; // Default
+}
 
 function initWebsiteList() {
     websiteList.innerHTML = "";
@@ -390,7 +373,7 @@ function initWebsiteList() {
     li.title = site.name;
     
     const icon = document.createElement('i');
-    icon.setAttribute('data-lucide', 'globe');
+    icon.setAttribute('data-lucide', getWebsiteIcon(site));
     li.appendChild(icon);
 
     li.onclick = () => {
@@ -478,6 +461,9 @@ function isUrlAllowed(urlStr) {
     }
 }
 
+/* 
+TO BE DECIDED LATER - Skip the search bar code since we have bookmarks
+
 // URL Navigation using Edge App Mode
 document.getElementById('goBtn').onclick = () => {
     const url = document.getElementById('urlInput').value;
@@ -540,6 +526,7 @@ document.getElementById('urlInput').addEventListener('keypress', function (e) {
         document.getElementById('goBtn').click();
     }
 });
+*/
 
 // Session Setup Logic
 const sessionSetupModal = document.getElementById("sessionSetupModal");
@@ -565,6 +552,12 @@ startSessionBtn.onclick = () => {
     sessionSetupModal.classList.add("hidden");
     startTime = new Date();
     startTimeDisplay.textContent = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    isTrackerOpen = true;
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({ type: 'GetTrackerDates' });
+        window.chrome.webview.postMessage({ type: 'LoadTrackerData' });
+    }
 };
 
 setInterval(() => {
@@ -667,6 +660,7 @@ const newBookInput = document.getElementById('newBookInput');
 const addBookBtn = document.getElementById('addBookBtn');
 const booksList = document.getElementById('booksList');
 const startScoreInput = document.getElementById('startScoreInput');
+const startScoreDisplay = document.getElementById('startScoreDisplay');
 const todayScoreDisplay = document.getElementById('todayScoreDisplay');
 const totalScoreDisplay = document.getElementById('totalScoreDisplay');
 const saveTrackerBtn = document.getElementById('saveTrackerBtn');
@@ -728,21 +722,8 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-let isTrackerOpen = false;
-trackerToggleBtn.onclick = () => {
-    isTrackerOpen = !isTrackerOpen;
-    if (isTrackerOpen) {
-        mainWorkspaceView.classList.add('hidden');
-        trackerWorkspaceView.classList.remove('hidden');
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({ type: 'GetTrackerDates' });
-            window.chrome.webview.postMessage({ type: 'LoadTrackerData' });
-        }
-    } else {
-        trackerWorkspaceView.classList.add('hidden');
-        mainWorkspaceView.classList.remove('hidden');
-    }
-};
+let isTrackerOpen = true;
+// Tracker is now permanently open, toggle btn is hidden
 
 prevDateBtn.onclick = () => {
     let start = new Date(carouselStartDateStr);
@@ -852,6 +833,7 @@ function updateGoalsUI() {
     
     const data = trackerData[dateStr];
     startScoreInput.value = data.startScore || 0;
+    startScoreDisplay.innerText = data.startScore || 0;
     
     goalsList.innerHTML = '';
     
@@ -1013,6 +995,26 @@ startScoreInput.onchange = () => {
     updateScoreUI();
 };
 
+if (startScoreDisplay) {
+    startScoreDisplay.onclick = () => {
+        startScoreDisplay.style.display = 'none';
+        startScoreInput.style.display = 'inline-block';
+        startScoreInput.focus();
+    };
+}
+if (startScoreInput) {
+    startScoreInput.addEventListener('blur', () => {
+        startScoreInput.style.display = 'none';
+        startScoreDisplay.style.display = 'inline-block';
+        startScoreDisplay.innerText = startScoreInput.value || '0';
+    });
+    startScoreInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            startScoreInput.blur();
+        }
+    });
+}
+
 saveTrackerBtn.onclick = () => {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({ type: 'SaveTrackerData', data: JSON.stringify(trackerData) });
@@ -1118,6 +1120,7 @@ if (window.chrome && window.chrome.webview) {
                 app.status = 'minimized';
                 app.paneId = null;
                 updateTaskbar();
+                showTaskbarTemporarily();
                 resetPanePlaceholders();
             }
         } else if (msg.type === 'AppClosed') {
@@ -1160,4 +1163,16 @@ if (window.chrome && window.chrome.webview) {
 // Initialize Icons
 if (window.lucide) {
     window.lucide.createIcons();
+}
+
+let taskbarTimeout;
+function showTaskbarTemporarily() {
+    const taskbar = document.getElementById('taskbar');
+    if (taskbar) {
+        taskbar.classList.add('show-temp');
+        clearTimeout(taskbarTimeout);
+        taskbarTimeout = setTimeout(() => {
+            taskbar.classList.remove('show-temp');
+        }, 3000); // Wait 3 seconds then slide down
+    }
 }
