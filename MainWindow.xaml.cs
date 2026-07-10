@@ -114,6 +114,7 @@ namespace WorkPlace
         private bool _isLocked = false;
         private bool _forceClose = false;
         private bool _isTesting = false;
+        private Process? _alarmProcess = null;
 
         public MainWindow()
         {
@@ -123,6 +124,7 @@ namespace WorkPlace
             this.Closed += (s, e) => {
                 UnhookWindowsHookEx(_hookID);
                 RestoreTouchpadGestures();
+                StopAlarmProcess();
             };
             AppDomain.CurrentDomain.ProcessExit += (s, e) => RestoreTouchpadGestures();
             this.Closing += MainWindow_Closing;
@@ -340,7 +342,7 @@ namespace WorkPlace
 
             try
             {
-                var configPath = Path.Combine(Directory.GetCurrentDirectory(), "user-data", "config.json");
+                var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "user-data", "config.json");
                 if (File.Exists(configPath))
                 {
                     var doc = JsonDocument.Parse(File.ReadAllText(configPath));
@@ -369,7 +371,7 @@ namespace WorkPlace
         {
             try
             {
-                var baseDir = Directory.GetCurrentDirectory();
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 var userDataDir = Path.Combine(baseDir, "user-data");
                 Directory.CreateDirectory(userDataDir);
                 
@@ -418,7 +420,7 @@ namespace WorkPlace
                 }
                 else if (type == "LoadConfig")
                 {
-                    var baseDir = Directory.GetCurrentDirectory();
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var configPath = Path.Combine(baseDir, "user-data", "config.json");
                     var content = File.Exists(configPath) ? File.ReadAllText(configPath) : "{}";
                     var response = new { type = "ConfigLoaded", config = content };
@@ -427,6 +429,18 @@ namespace WorkPlace
                 else if (type == "SetLock")
                 {
                     _isLocked = data.GetProperty("locked").GetBoolean();
+                    if (_isLocked && data.TryGetProperty("alarmThreshold", out var threshProp))
+                    {
+                        int threshold = threshProp.GetInt32();
+                        if (threshold > 0)
+                        {
+                            StartAlarmProcess(threshold);
+                        }
+                    }
+                    else if (!_isLocked)
+                    {
+                        StopAlarmProcess();
+                    }
                 }
                 else if (type == "LaunchApp")
                 {
@@ -488,7 +502,7 @@ namespace WorkPlace
                     var content = data.GetProperty("content").GetString();
                     if (!string.IsNullOrEmpty(content))
                     {
-                        var baseDir = Directory.GetCurrentDirectory();
+                        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                         var dateDir = Path.Combine(baseDir, "user-data", "reports", DateTime.Now.ToString("yyyy-MM-dd"));
                         Directory.CreateDirectory(dateDir);
                         var path = Path.Combine(dateDir, "Report.csv");
@@ -501,7 +515,7 @@ namespace WorkPlace
                 }
                 else if (type == "GetTrackerDates")
                 {
-                    var baseDir = Directory.GetCurrentDirectory();
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var reportsDir = Path.Combine(baseDir, "user-data", "reports");
                     var dates = new List<string>();
                     if (Directory.Exists(reportsDir))
@@ -519,7 +533,7 @@ namespace WorkPlace
                 else if (type == "GetReportsForDate")
                 {
                     var date = data.GetProperty("date").GetString();
-                    var baseDir = Directory.GetCurrentDirectory();
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var dateDir = Path.Combine(baseDir, "user-data", "reports", date!);
                     var reports = new List<object>();
                     int totalNamjap = 0;
@@ -559,7 +573,7 @@ namespace WorkPlace
                 }
                 else if (type == "LoadTrackerData")
                 {
-                    var baseDir = Directory.GetCurrentDirectory();
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var trackerFile = Path.Combine(baseDir, "user-data", "tracker.json");
                     var content = File.Exists(trackerFile) ? File.ReadAllText(trackerFile) : "{}";
                     var response = new { type = "TrackerDataLoaded", data = content };
@@ -571,7 +585,7 @@ namespace WorkPlace
                     var trackerData = data.GetProperty("data").GetString();
                     if (!string.IsNullOrEmpty(trackerData))
                     {
-                        var baseDir = Directory.GetCurrentDirectory();
+                        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                         var userDataDir = Path.Combine(baseDir, "user-data");
                         Directory.CreateDirectory(userDataDir);
                         File.WriteAllText(Path.Combine(userDataDir, "tracker.json"), trackerData);
@@ -664,6 +678,51 @@ namespace WorkPlace
                 SetWindowPos(hWnd, HWND_TOPMOST, x, y, w, h, flags);
             }
             catch { }
+        }
+
+        private void StartAlarmProcess(int thresholdSeconds)
+        {
+            StopAlarmProcess();
+            try
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var scriptPath = Path.Combine(baseDir, "script.py");
+                var pythonExe = Path.Combine(baseDir, ".venv", "Scripts", "python.exe");
+                
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = pythonExe,
+                    Arguments = $"\"{scriptPath}\" {thresholdSeconds}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = baseDir
+                };
+                
+                _alarmProcess = Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to start alarm process: {ex.Message}");
+            }
+        }
+
+        private void StopAlarmProcess()
+        {
+            try
+            {
+                if (_alarmProcess != null && !_alarmProcess.HasExited)
+                {
+                    _alarmProcess.Kill();
+                    _alarmProcess.Dispose();
+                }
+            }
+            catch { }
+            finally
+            {
+                _alarmProcess = null;
+            }
         }
     }
 }

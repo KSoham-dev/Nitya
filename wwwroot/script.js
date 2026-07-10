@@ -542,11 +542,16 @@ const startTimeDisplay = document.getElementById('startTimeDisplay');
 
 startSessionBtn.onclick = () => {
     const mins = parseInt(sessionDurationSelect.value);
+    const alarmThreshold = parseInt(document.getElementById("alarmThresholdSelect").value) || 0;
     if (mins > 0) {
         sessionDurationMs = mins * 60 * 1000;
         isSessionLocked = true;
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({ type: 'SetLock', locked: true });
+            window.chrome.webview.postMessage({ 
+                type: 'SetLock', 
+                locked: true,
+                alarmThreshold: alarmThreshold
+            });
         }
     }
     sessionSetupModal.classList.add("hidden");
@@ -1147,6 +1152,19 @@ if (window.chrome && window.chrome.webview) {
                     opt.value = "1";
                     opt.textContent = "1 Minute (Trial)";
                     sel.insertBefore(opt, sel.firstChild);
+
+                    const alarmSel = document.getElementById('alarmThresholdSelect');
+                    if (alarmSel) {
+                        const opt10s = document.createElement('option');
+                        opt10s.value = "10";
+                        opt10s.textContent = "10 Seconds (Test)";
+                        alarmSel.insertBefore(opt10s, alarmSel.firstChild);
+
+                        const optDisabled = document.createElement('option');
+                        optDisabled.value = "0";
+                        optDisabled.textContent = "Disabled";
+                        alarmSel.insertBefore(optDisabled, alarmSel.firstChild);
+                    }
                 }
             } catch (e) {
                 console.error("Failed to parse config.json", e);

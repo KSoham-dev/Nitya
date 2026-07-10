@@ -16,6 +16,16 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="user-data\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="script.py" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="sound.mp3" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="face_landmarker.task" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="SetupPythonEnv" AfterTargets="Build" Condition="!Exists('$(TargetDir)\.venv')">
+    <Message Importance="high" Text="Setting up Python virtual environment in output directory..." />
+    <Exec Command="python -m venv &quot;$(TargetDir)\.venv&quot;" />
+    <Exec Command="&quot;$(TargetDir)\.venv\Scripts\python.exe&quot; -m pip install -r &quot;$(ProjectDir)requirements.txt&quot;" />
+  </Target>
 
 </Project>
